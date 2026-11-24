@@ -1,0 +1,106 @@
+<header class="app-header">
+  <a href="/" class="brand"><span class="brand-icon" aria-hidden="true">IT</span> Service Desk</a>
+  <nav aria-label="Navigation principale">
+    <a href="#tickets">Tickets</a>
+    <a href="#assistant">Assistant</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-header">
+    <h1>Support informatique</h1>
+    <p>Gère tes tickets et retrouve les procédures de support.</p>
+  </div>
+
+  <div class="workspace">
+    <section id="tickets" class="panel">
+      <div class="section-heading">
+        <h2>Tickets</h2>
+        <button type="button" class="secondary" (click)="loadTickets()"
+          [disabled]="loading() || saving() || updating() !== null">Actualiser</button>
+      </div>
+
+      <form class="ticket-form" (ngSubmit)="createTicket()">
+        <label for="title">Titre</label>
+        <input id="title" name="title" placeholder="Ex. Connexion VPN impossible"
+          [(ngModel)]="title" maxlength="120" [readOnly]="saving()" required>
+        <label for="description">Description</label>
+        <textarea id="description" name="description" placeholder="Que s’est-il passé ?"
+          [(ngModel)]="description" rows="3" maxlength="3000" [readOnly]="saving()" required></textarea>
+        <button type="submit" [disabled]="saving() || loading() || !title.trim() || !description.trim()">
+          {{ saving() ? 'Création…' : 'Créer un ticket' }}
+        </button>
+      </form>
+
+      @if (ticketError()) {
+        <p class="error" role="alert">{{ticketError()}}</p>
+      }
+      @if (loading()) {
+        <p class="muted" role="status">Chargement des tickets…</p>
+      } @else if (!tickets().length && !ticketError()) {
+        <p class="empty">Aucun ticket pour le moment.</p>
+      }
+
+      @for (ticket of tickets(); track ticket.id) {
+        <article class="ticket">
+          <div class="ticket-top">
+            <span class="ticket-id">#{{ticket.id}}</span>
+            <time [attr.datetime]="ticket.createdAt">{{ticket.createdAt | date:'dd/MM/yyyy HH:mm'}}</time>
+            <select #selected [attr.aria-label]="'Statut du ticket ' + ticket.id"
+              [ngModel]="ticket.status" [disabled]="updating() !== null || loading()"
+              [attr.data-status]="ticket.status"
+              (ngModelChange)="changeStatus(ticket, $event, selected)">
+              @for (status of statuses; track status.value) {
+                <option [value]="status.value">{{status.label}}</option>
+              }
+            </select>
+          </div>
+          <h3>{{ticket.title}}</h3>
+          <p>{{ticket.description}}</p>
+        </article>
+      }
+    </section>
+
+    <section id="assistant" class="panel assistant">
+      <h2>Assistant IT</h2>
+      <form (ngSubmit)="askAssistant()">
+        <label for="question">Ta question</label>
+        <textarea id="question" name="question" placeholder="Ex. Comment me connecter au VPN ?"
+          [(ngModel)]="question" rows="3" maxlength="1000" required></textarea>
+        <div class="examples">
+          <button type="button" class="secondary" (click)="question = 'Comment me connecter au VPN ?'">Connexion VPN</button>
+          @if (tickets()[0]; as ticket) {
+            <button type="button" class="secondary"
+              (click)="question = 'Quel est le statut du ticket #' + ticket.id + ' ?'">
+              Statut du ticket #{{ticket.id}}
+            </button>
+          }
+        </div>
+        <button type="submit" [disabled]="asking() || !question.trim()">
+          {{asking() ? 'Recherche en cours…' : 'Envoyer'}}
+        </button>
+      </form>
+      @if (assistantError()) {
+        <p class="error" role="alert">{{assistantError()}}</p>
+      }
+      @if (answer(); as result) {
+        <div class="answer" aria-live="polite">
+          <p class="answer-text">{{result.answer}}</p>
+          @if (result.sources.length) {
+            <h3>Sources citées</h3>
+            @for (source of result.sources; track source.id) {
+              <details>
+                <summary>[{{source.id}}] {{source.title}}</summary>
+                <p>{{source.excerpt}}</p>
+                <small>{{source.file}}</small>
+              </details>
+            }
+          }
+          @if (result.tools.length) {
+            <p class="tool-trace">Outils utilisés · {{result.tools.join(' / ')}}</p>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</main>
