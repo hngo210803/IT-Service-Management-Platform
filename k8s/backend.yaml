@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -U itsm -d itsm; do sleep 2; done
+      containers:
+        - name: backend
+          image: itsm-backend:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0"
+            - name: DB_URL
+              value: jdbc:postgresql://postgres:5432/itsm
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: itsm-db
+                  key: password
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=65"
+          # Liveness vérifie le processus, readiness vérifie aussi PostgreSQL.
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
