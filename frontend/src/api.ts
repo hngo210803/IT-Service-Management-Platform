@@ -13,7 +13,6 @@ export interface Ticket {
 
 export interface AssistantAnswer {
   answer: string;
-  tools: string[];
   sources: {id: string; title: string; file: string; excerpt: string}[];
 }
 

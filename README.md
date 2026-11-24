@@ -1,6 +1,6 @@
 # IT Service Desk
 
-IT Service Desk est une petite application de gestion de tickets informatiques. On peut créer un ticket, le retrouver dans la liste et changer son statut. J’ai fait ce projet pour apprendre à faire fonctionner ensemble un frontend Angular, une API Spring Boot et une base PostgreSQL avec Docker Compose.
+IT Service Desk est une petite application de gestion de tickets informatiques. On peut créer un ticket, le retrouver dans la liste et changer son statut. J’ai réalisé ce projet pour apprendre à développer une application web full-stack, et à la faire tourner avec Docker Compose.
 
 ## Lancer le projet
 
@@ -10,9 +10,9 @@ Il faut avoir Docker et Docker Compose. Si vous utilisez Docker Desktop, ouvrez-
 docker compose up --build
 ```
 
-Le premier lancement peut prendre quelques minutes. Une fois les services démarrés, ouvrez [http://localhost:8081](http://localhost:8081).
+Une fois les services démarrés, ouvrez [http://localhost:8081](http://localhost:8081).
 
-Pour tester, créez un ticket intitulé `Impossible de me connecter au VPN`. Il apparaît avec le statut **Ouvert**. Passez-le à **En cours**, puis actualisez la page pour vérifier que le changement a bien été enregistré.
+Vous pouvez créer un ticket pour signaler un problème, par exemple une connexion VPN qui ne fonctionne pas ou un mot de passe oublié. Le ticket apparaît avec le statut **Ouvert**. Pour vérifier que le statut est bien enregistré dans PostgreSQL, passez-le à **En cours**, puis actualisez la page.
 
 Pour arrêter l’application, faites `Ctrl+C` dans le terminal. Les tickets restent dans le volume PostgreSQL et seront encore là au prochain démarrage.
 
@@ -22,21 +22,43 @@ Pour arrêter l’application, faites `Ctrl+C` dans le terminal. Les tickets res
 - **Spring Boot** gère la création des tickets et la mise à jour de leur statut.
 - **Spring Data JPA** enregistre les données dans PostgreSQL.
 
-## Essayer l’assistant IA
+## L’assistant IA
 
-Ollama est facultatif pour gérer les tickets. Pour essayer l’assistant sur Mac, ouvrez Ollama et téléchargez les deux modèles utilisés par le projet.
+Ollama est nécessaire pour utiliser l’assistant. La gestion des tickets fonctionne aussi lorsque Ollama est arrêté.
+
+### Démarrer Ollama
+
+**macOS et Windows avec Docker Desktop.** Ouvrez Ollama sur votre machine, puis téléchargez les deux modèles dans un terminal. Le backend se connecte à Ollama via `host.docker.internal:11434`. [Télécharger Ollama](https://ollama.com/download) · [Réseau Docker Desktop](https://docs.docker.com/desktop/features/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)
 
 ```bash
 ollama pull qwen3:4b
 ollama pull bge-m3
 ```
 
-Ensuite, essayez ces deux questions dans l’interface.
+**Linux avec Docker Engine.** Après avoir démarré l’application, vous pouvez lancer Ollama dans un conteneur sur le même réseau Docker. [Documentation Docker d’Ollama](https://docs.ollama.com/docker)
 
-1. **« Comment me connecter au VPN ? »** L’assistant cherche dans la documentation fournie avec le projet. Vous pouvez ouvrir la source citée pour lire le passage utilisé.
-2. **« Quel est le statut du ticket #1 ? »** Remplacez `1` par le numéro de votre ticket. L’assistant utilise un outil MCP pour consulter son statut actuel. Changez le statut et posez de nouveau la question pour vérifier que la réponse suit la mise à jour.
+```bash
+docker run -d --name itsm-ollama --network itsm-platform_default \
+  -v itsm-ollama-models:/root/.ollama ollama/ollama
+docker exec itsm-ollama ollama pull qwen3:4b
+docker exec itsm-ollama ollama pull bge-m3
+OLLAMA_URL=http://itsm-ollama:11434 docker compose up -d backend
+docker compose restart frontend
+```
 
-## Vérifier l’API et MCP
+### Que peut-on demander ?
+
+**Suivi d’un ticket.** « Quel est le statut du ticket #numéro d’un ticket existant ? »
+
+**Exemples de questions couvertes par la documentation de démonstration**
+
+- « Comment me connecter au VPN ? »
+- « Comment réinitialiser mon mot de passe ? »
+- « Comment signaler un incident informatique ? »
+
+Pour ces questions, l’assistant cherche un passage dans les guides du projet et s’en sert pour formuler sa réponse. Les passages cités sont accessibles dans **Sources citées**.
+
+## Lancer un test rapide (facultatif)
 
 Avec l’application démarrée, lancez le script suivant depuis la racine du dépôt. Il faut avoir Python 3.
 

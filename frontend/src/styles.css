@@ -77,8 +77,8 @@ button.secondary { background: #f1f5fd; color: #173f86; border-color: var(--bord
 .empty, .answer, .error { padding: .8rem; border-radius: 8px; }
 .empty, .answer { background: #f2f6fc; }
 .error { color: #8d2525; background: #fdf0f0; }
-.answer h3, .tool-trace { margin-top: .9rem; }
-.tool-trace, details { font-size: .85rem; color: var(--muted); }
+.answer h3 { margin-top: .9rem; }
+details { font-size: .85rem; color: var(--muted); }
 details { border-top: 1px solid var(--border); padding: .45rem 0; }
 summary { color: #214878; cursor: pointer; }
 @media (max-width: 750px) {
