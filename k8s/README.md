@@ -52,3 +52,54 @@ kubectl --context kind-itsm -n itsm logs deployment/backend --tail=50 -f
 kubectl --context kind-itsm -n itsm logs deployment/frontend --tail=50
 kubectl --context kind-itsm -n itsm describe pods -l app=backend
 ```
+
+## Tester la sonde de disponibilité
+
+Pour lancer le test automatiquement, créez au moins un ticket dans le cluster local, puis exécutez la commande suivante à la racine du dépôt. Le script utilise Python 3 et le contexte `kind-itsm`. Il arrête brièvement PostgreSQL et le relance, même si une vérification échoue.
+
+```bash
+bash scripts/test-k8s-readiness.sh
+```
+
+Pour observer les étapes une par une, suivez les commandes ci-dessous.
+
+Gardez les deux commandes de port-forward ouvertes. Créez un ticket sur [http://localhost:9081](http://localhost:9081) et notez son numéro.
+
+
+Spring Boot vérifie que le backend est prêt à recevoir des requêtes et qu’il peut se connecter à PostgreSQL. Dans un troisième terminal, vérifiez d’abord que la sonde renvoie `200 UP`.
+
+```bash
+curl -si http://localhost:9082/actuator/health/readiness
+```
+
+Sur le cluster local de test, arrêtez temporairement PostgreSQL en ramenant le nombre de réplicas à zéro.
+
+```bash
+kubectl --context kind-itsm -n itsm scale statefulset/postgres --replicas=0
+kubectl --context kind-itsm -n itsm wait --for=condition=Ready=false \
+  pod -l app=backend --timeout=120s
+kubectl --context kind-itsm -n itsm get pods -l app=backend
+curl -si http://localhost:9082/actuator/health/readiness
+curl -si http://localhost:9082/actuator/health/liveness
+```
+
+Le pod du backend reste `Running`, avec `0/1` dans la colonne `READY`. La sonde de disponibilité renvoie `503 DOWN` et le Service cesse d’envoyer de nouvelles requêtes à ce pod. La sonde de vie renvoie toujours `200 UP`, car Spring Boot continue de tourner.
+
+Relancez PostgreSQL et vérifiez que le backend redevient disponible.
+
+```bash
+kubectl --context kind-itsm -n itsm scale statefulset/postgres --replicas=1
+kubectl --context kind-itsm -n itsm rollout status statefulset/postgres --timeout=120s
+kubectl --context kind-itsm -n itsm wait --for=condition=Ready \
+  pod -l app=backend --timeout=120s
+curl -si http://localhost:9082/actuator/health/readiness
+```
+
+La sonde doit de nouveau renvoyer `200 UP`. Après avoir actualisé l’interface, vous devriez retrouver le ticket créé au début du test. Le pod PostgreSQL retrouve les données sur son volume persistant.
+
+Pour consulter les logs du backend ou les événements du pod, utilisez ces commandes.
+
+```bash
+kubectl --context kind-itsm -n itsm logs deployment/backend -c backend --tail=50
+kubectl --context kind-itsm -n itsm describe pods -l app=backend
+```
