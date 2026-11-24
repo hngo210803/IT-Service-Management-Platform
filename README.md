@@ -69,3 +69,11 @@ python3 scripts/smoke.py \
 ```
 
 Le script crée un ticket de test, change son statut et vérifie que l’outil MCP renvoie le nouveau statut. GitHub Actions construit les deux images Docker et lance ce test à chaque push et pull request.
+
+## Déployer sur Kubernetes en local
+
+L’application peut aussi tourner sur un cluster local avec kind. Les manifestes déploient le frontend, le backend et PostgreSQL. Les tickets sont stockés sur un volume persistant.
+
+Pour tester la disponibilité, j’ai arrêté PostgreSQL. Le backend est passé en `NotReady` sans redémarrer. Après le retour de la base, le backend a de nouveau accepté les requêtes et le ticket était toujours présent.
+
+[Déploiement pas à pas et test de la sonde](k8s/README.md)
